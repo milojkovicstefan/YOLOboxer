@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YOLOboxer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">YOLO<b>boxer</b></div>
+  <form id="dir-form" class="dir">
+    <label for="dir-input">dir</label>
+    <input id="dir-input" spellcheck="false" autocomplete="off" placeholder="/path/to/images">
+    <button type="submit">open</button>
+    <button type="button" id="browse-btn">browse&hellip;</button>
+  </form>
+  <div id="progress" class="progress"></div>
+</header>
+
+<main class="layout">
+  <!-- left: image list -->
+  <aside class="panel files">
+    <h2><span>01</span> images</h2>
+    <ol id="file-list"></ol>
+  </aside>
+
+  <!-- centre: canvas -->
+  <section class="stage">
+    <div class="stage-head">
+      <button id="prev-btn" title="previous (&larr;)">&larr;</button>
+      <span id="counter" class="counter">&mdash;</span>
+      <button id="next-btn" title="next (&rarr;)">&rarr;</button>
+      <span id="image-name" class="image-name"></span>
+      <span id="dirty" class="dirty" hidden>unsaved</span>
+      <span class="spacer"></span>
+      <button id="zoom-btn" class="zoom" title="reset zoom (double-click image)" disabled>fit</button>
+      <button id="clear-btn">clear</button>
+      <button id="save-btn">save</button>
+      <button id="save-next-btn" class="primary">save + next</button>
+    </div>
+    <div id="canvas-wrap" class="canvas-wrap">
+      <canvas id="cv"></canvas>
+      <div id="empty" class="empty">
+        <p>No image directory open.</p>
+        <p>Type a path above or <button id="empty-browse-btn">browse&hellip;</button></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- right: classes + boxes -->
+  <aside class="panel side">
+    <h2><span>02</span> classes</h2>
+    <ol id="class-list"></ol>
+    <form id="add-class-form" class="add-class">
+      <input id="add-class-input" placeholder="new class" autocomplete="off" spellcheck="false">
+      <button type="submit">add</button>
+    </form>
+    <p class="note">click to pick &middot; double-click to rename</p>
+
+    <h2><span>03</span> boxes</h2>
+    <ol id="box-list"></ol>
+  </aside>
+</main>
+
+<footer class="keys">
+  <span><kbd>drag</kbd> draw box</span>
+  <span><kbd>click</kbd> select box</span>
+  <span><kbd>1</kbd>&hellip;<kbd>0</kbd> <kbd>a</kbd>&hellip; set class</span>
+  <span><kbd>Del</kbd> delete box</span>
+  <span><kbd>Esc</kbd> deselect</span>
+  <span><kbd>pinch</kbd> / <kbd>Ctrl</kbd>+<kbd>scroll</kbd> zoom</span>
+  <span><kbd>scroll</kbd> / <kbd>middle-drag</kbd> pan</span>
+  <span><kbd>dbl-click</kbd> fit</span>
+  <span><kbd>&larr;</kbd><kbd>&rarr;</kbd> prev / next</span>
+  <span><kbd>Ctrl</kbd>+<kbd>S</kbd> save</span>
+  <span><kbd>Enter</kbd> save + next</span>
+</footer>
+
+<!-- directory browser -->
+<dialog id="browser" class="browser">
+  <div class="browser-head">
+    <h2>open directory</h2>
+    <button id="browser-close" title="close">&times;</button>
+  </div>
+  <div id="browser-path" class="browser-path"></div>
+  <ul id="browser-list" class="browser-list"></ul>
+  <div class="browser-foot">
+    <span id="browser-count"></span>
+    <button id="browser-open" class="primary">open this directory</button>
+  </div>
+</dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
