@@ -13,6 +13,7 @@ The backend is a plain FastAPI app; the UI lives in ./static (index.html, app.js
 """
 import argparse
 import os
+from collections import Counter
 from pathlib import Path
 
 import uvicorn
@@ -26,6 +27,14 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="YOLOboxer")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.middleware("http")
+async def no_cache(request, call_next):
+    # make the browser revalidate every file, so UI changes show up on a normal reload
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 # --- workspace: the currently opened image directory ------------------------
@@ -59,6 +68,21 @@ class Workspace:
 
     def label_path(self, name: str) -> Path:
         return self.labels_dir / (Path(name).stem + ".txt")
+
+    def read_boxes(self, name: str) -> list[dict] | None:
+        """Boxes from the image's label file, or None if it has no label file yet."""
+        lp = self.label_path(name)
+        if not lp.exists():
+            return None
+        boxes = []
+        for line in lp.read_text().splitlines():
+            parts = line.split()
+            if len(parts) != 5:
+                continue
+            c, cx, cy, w, h = parts
+            boxes.append({"cls": int(c), "cx": float(cx), "cy": float(cy),
+                          "w": float(w), "h": float(h)})
+        return boxes
 
     def read_classes(self) -> list[str]:
         if not self.classes_file.exists():
@@ -159,17 +183,7 @@ def image(name: str):
 @app.get("/api/label/{name}")
 def api_label(name: str):
     ws.check_image(name)
-    boxes = []
-    lp = ws.label_path(name)
-    if lp.exists():
-        for line in lp.read_text().splitlines():
-            parts = line.split()
-            if len(parts) != 5:
-                continue
-            c, cx, cy, w, h = parts
-            boxes.append({"cls": int(c), "cx": float(cx), "cy": float(cy),
-                          "w": float(w), "h": float(h)})
-    return {"boxes": boxes}
+    return {"boxes": ws.read_boxes(name) or []}
 
 
 @app.post("/api/label/{name}")
@@ -179,6 +193,38 @@ def api_save_label(name: str, payload: SavePayload):
     lines = [f"{b.cls} {b.cx:.6f} {b.cy:.6f} {b.w:.6f} {b.h:.6f}" for b in payload.boxes]
     ws.label_path(name).write_text("\n".join(lines) + ("\n" if lines else ""))
     return {"ok": True, "count": len(lines)}
+
+
+@app.get("/api/stats")
+def api_stats():
+    """Dataset statistics from the saved label files."""
+    classes = ws.read_classes()
+    instances = Counter()     # class id -> number of boxes
+    images_with = Counter()   # class id -> number of images containing it
+    with_boxes = empty = unlabelled = 0
+    for name in ws.images():
+        boxes = ws.read_boxes(name)
+        if boxes is None:
+            unlabelled += 1
+            continue
+        if boxes:
+            with_boxes += 1
+        else:
+            empty += 1
+        ids = [b["cls"] for b in boxes]
+        instances.update(ids)
+        images_with.update(set(ids))
+
+    # every class in classes.txt, plus any id used in a label file but missing from it
+    ids = list(range(len(classes))) + sorted(c for c in instances if c >= len(classes))
+    return {
+        "images": {"total": with_boxes + empty + unlabelled, "with_boxes": with_boxes,
+                   "empty": empty, "unlabelled": unlabelled},
+        "boxes": sum(instances.values()),
+        "classes": [{"id": c, "name": classes[c] if c < len(classes) else None,
+                     "instances": instances[c], "images": images_with[c]}
+                    for c in ids],
+    }
 
 
 @app.post("/api/classes")

@@ -54,6 +54,10 @@ IMAGE_DIR/
 An image saved with no boxes gets an empty label file and counts as labelled (a background
 image); it is marked blue instead of green in the image list.
 
+The **stats** button in the top bar shows the dataset at a glance: images with boxes,
+saved without boxes and unlabelled, and the number of instances (and images) per class.
+It counts saved label files only.
+
 ## Keys
 
 | key | action |

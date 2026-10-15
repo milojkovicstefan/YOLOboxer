@@ -595,10 +595,63 @@ $("browser-open").onclick = () => {
   openDir(browser.path);
 };
 
+// --- statistics ------------------------------------------------------------
+
+async function openStats() {
+  if (!state.dir) { alert("Open an image directory first."); return; }
+  $("stats-body").innerHTML = statsHtml(await api("/api/stats"));
+  $("stats").showModal();
+}
+
+function statsHtml(s) {
+  const im = s.images;
+  const pct = (n, total) => (total ? Math.round((100 * n) / total) : 0);
+  const groups = [
+    ["with boxes", im.with_boxes, "done"],
+    ["saved, no boxes", im.empty, "blank"],
+    ["unlabelled", im.unlabelled, "todo"],
+  ];
+
+  const tiles = groups.map(([label, n, cls]) =>
+    `<div class="tile"><span class="tile-label"><span class="marker ${cls}"></span>${label}</span>` +
+    `<b>${n}</b><span class="pct">${pct(n, im.total)}% of ${im.total}</span></div>`
+  ).join("");
+  const split = groups.filter(([, n]) => n > 0).map(([label, n, cls]) =>
+    `<span class="seg ${cls}" style="flex:${n}" title="${label}: ${n} (${pct(n, im.total)}%)"></span>`
+  ).join("");
+
+  const max = Math.max(1, ...s.classes.map((c) => c.instances));
+  const rows = s.classes.map((c) => {
+    const name = c.name === null
+      ? `<span class="unknown">#${c.id} (not in classes.txt)</span>`
+      : esc(c.name);
+    const tip = `${c.name ?? "#" + c.id}: ${c.instances} instance${c.instances === 1 ? "" : "s"}` +
+                ` (${pct(c.instances, s.boxes)}% of boxes) in ${c.images} image${c.images === 1 ? "" : "s"}`;
+    return `<tr title="${esc(tip)}">` +
+      `<td class="key">${c.name === null ? "" : esc(keyFor(c.id))}</td>` +
+      `<td><span class="name"><span class="swatch" style="background:${colorFor(c.id)}"></span>${name}</span></td>` +
+      `<td class="num">${c.images}</td>` +
+      `<td class="inst-cell"><div class="inst-row"><span class="inst-track">` +
+      `<span class="inst-bar${c.instances ? "" : " zero"}" style="width:${(100 * c.instances) / max}%"></span>` +
+      `</span><span class="num">${c.instances}</span></div></td></tr>`;
+  }).join("");
+
+  return `<h3>images <span>${im.total} total</span></h3>` +
+    `<div class="tiles">${tiles}</div><div class="split">${split}</div>` +
+    `<h3>instances per class <span>${s.boxes} boxes total</span></h3>` +
+    (s.classes.length
+      ? `<table class="class-stats"><thead><tr><th>key</th><th>class</th>` +
+        `<th class="num">images</th><th>instances</th></tr></thead><tbody>${rows}</tbody></table>`
+      : `<p class="note">no classes yet</p>`);
+}
+
+$("stats-btn").onclick = openStats;
+$("stats-close").onclick = () => $("stats").close();
+
 // --- keyboard --------------------------------------------------------------
 
 document.addEventListener("keydown", (e) => {
-  if (e.target.tagName === "INPUT" || $("browser").open) return;
+  if (e.target.tagName === "INPUT" || document.querySelector("dialog[open]")) return;
 
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
     e.preventDefault();

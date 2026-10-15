@@ -17,6 +17,7 @@
     <button type="button" id="browse-btn">browse&hellip;</button>
   </form>
   <div id="progress" class="progress"></div>
+  <button id="stats-btn" type="button">stats</button>
 </header>
 
 <main class="layout">
@@ -79,17 +80,27 @@
 </footer>
 
 <!-- directory browser -->
-<dialog id="browser" class="browser">
-  <div class="browser-head">
+<dialog id="browser" class="modal">
+  <div class="modal-head">
     <h2>open directory</h2>
     <button id="browser-close" title="close">&times;</button>
   </div>
   <div id="browser-path" class="browser-path"></div>
   <ul id="browser-list" class="browser-list"></ul>
-  <div class="browser-foot">
+  <div class="modal-foot">
     <span id="browser-count"></span>
     <button id="browser-open" class="primary">open this directory</button>
   </div>
+</dialog>
+
+<!-- dataset statistics -->
+<dialog id="stats" class="modal stats">
+  <div class="modal-head">
+    <h2>statistics</h2>
+    <button id="stats-close" title="close">&times;</button>
+  </div>
+  <div id="stats-body" class="stats-body"></div>
+  <div class="modal-foot">counted from saved label files; unsaved boxes are not included</div>
 </dialog>
 
 <script src="/static/app.js"></script>
