@@ -1,0 +1,10 @@
+services:
+  yoloboxer:
+    build: .
+    image: yoloboxer
+    ports:
+      - "127.0.0.1:${PORT:-8000}:8000"   # only reachable from this machine
+    volumes:
+      - ${IMAGES_DIR:-./images}:/data
+    # write label files as your user instead of root
+    user: "${UID:-1000}:${GID:-1000}"

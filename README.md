@@ -15,6 +15,30 @@ python -m venv .venv
 Open http://127.0.0.1:8000, pick an image directory (type the path or use *browse…*),
 add your classes in the right panel and start drawing boxes.
 
+## Run with Docker
+
+The image directory is mounted into the container at `/data`, and labels are written to
+`/data/labels`, which is the `labels/` folder next to your images on the host.
+
+```sh
+IMAGES_DIR=/path/to/images docker compose up --build
+```
+
+Then open http://127.0.0.1:8000. `PORT` changes the host port. Label files are written as
+UID/GID 1000 by default; if your user has a different id, run
+`UID=$(id -u) GID=$(id -g) IMAGES_DIR=... docker compose up --build`.
+
+Without Compose:
+
+```sh
+docker build -t yoloboxer .
+docker run --rm -p 127.0.0.1:8000:8000 --user "$(id -u):$(id -g)" \
+  -v /path/to/images:/data yoloboxer
+```
+
+Inside the container only `/data` (and what you mount) is visible, so the directory
+browser shows container paths, not host paths.
+
 ## Output
 
 Labels are written next to the images:
