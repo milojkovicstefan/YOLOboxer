@@ -4,6 +4,8 @@ YOLO format. Point it at a folder of images, define your classes, and label with
 and keyboard. Labels and `classes.txt` are written to a `labels/` folder next to the
 images, ready for YOLO training. No accounts, no cloud, no build step.
 
+![YOLOboxer labelling an image: image list, canvas with boxes, classes and boxes panels](docs/screenshot.png)
+
 ## Run
 
 ```sh
