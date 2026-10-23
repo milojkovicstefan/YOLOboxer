@@ -57,8 +57,9 @@ An image saved with no boxes gets an empty label file and counts as labelled (a 
 image); it is marked blue instead of green in the image list.
 
 The **stats** button in the top bar shows the dataset at a glance: images with boxes,
-saved without boxes and unlabelled, and the number of instances (and images) per class.
-It counts saved label files only.
+saved without boxes and unlabelled, the number of instances (and images) per class, and the
+average object size in pixels (box area, overall and per class, with the side of a square of
+the same area). It counts saved label files only.
 
 ## Keys
 

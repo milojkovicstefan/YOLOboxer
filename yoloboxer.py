@@ -20,10 +20,14 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import Image
 from pydantic import BaseModel
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".gif"}
 STATIC_DIR = Path(__file__).parent / "static"
+
+# these are the user's own files, and large images are common; lift Pillow's bomb guard
+Image.MAX_IMAGE_PIXELS = None
 
 app = FastAPI(title="YOLOboxer")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -102,6 +106,18 @@ def count_images(d: Path) -> int:
         return sum(1 for p in d.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTS)
     except OSError:
         return 0
+
+
+def image_size(path: Path) -> tuple[int, int] | None:
+    """Width and height as the browser shows the image, i.e. after EXIF rotation."""
+    try:
+        with Image.open(path) as im:
+            w, h = im.size
+            if im.getexif().get(0x0112) in (5, 6, 7, 8):   # orientation: rotated 90 or 270
+                w, h = h, w
+            return w, h
+    except OSError:
+        return None
 
 
 # --- models -----------------------------------------------------------------
@@ -201,6 +217,8 @@ def api_stats():
     classes = ws.read_classes()
     instances = Counter()     # class id -> number of boxes
     images_with = Counter()   # class id -> number of images containing it
+    measured = Counter()      # class id -> boxes in images whose size could be read
+    area = Counter()          # class id -> summed box area, px
     with_boxes = empty = unlabelled = 0
     for name in ws.images():
         boxes = ws.read_boxes(name)
@@ -209,11 +227,21 @@ def api_stats():
             continue
         if boxes:
             with_boxes += 1
+            size = image_size(ws.image_dir / name)
+            if size:
+                for b in boxes:
+                    measured[b["cls"]] += 1
+                    area[b["cls"]] += b["w"] * size[0] * b["h"] * size[1]
         else:
             empty += 1
         ids = [b["cls"] for b in boxes]
         instances.update(ids)
         images_with.update(set(ids))
+
+    def avg_px(c=None):
+        n = sum(measured.values()) if c is None else measured[c]
+        total = sum(area.values()) if c is None else area[c]
+        return round(total / n) if n else None
 
     # every class in classes.txt, plus any id used in a label file but missing from it
     ids = list(range(len(classes))) + sorted(c for c in instances if c >= len(classes))
@@ -221,8 +249,9 @@ def api_stats():
         "images": {"total": with_boxes + empty + unlabelled, "with_boxes": with_boxes,
                    "empty": empty, "unlabelled": unlabelled},
         "boxes": sum(instances.values()),
+        "avg_px": avg_px(),
         "classes": [{"id": c, "name": classes[c] if c < len(classes) else None,
-                     "instances": instances[c], "images": images_with[c]}
+                     "instances": instances[c], "images": images_with[c], "avg_px": avg_px(c)}
                     for c in ids],
     }
 

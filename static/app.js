@@ -626,11 +626,13 @@ function statsHtml(s) {
       ? `<span class="unknown">#${c.id} (not in classes.txt)</span>`
       : esc(c.name);
     const tip = `${c.name ?? "#" + c.id}: ${c.instances} instance${c.instances === 1 ? "" : "s"}` +
-                ` (${pct(c.instances, s.boxes)}% of boxes) in ${c.images} image${c.images === 1 ? "" : "s"}`;
+                ` (${pct(c.instances, s.boxes)}% of boxes) in ${c.images} image${c.images === 1 ? "" : "s"}` +
+                (c.avg_px === null ? "" : `, ${pxArea(c.avg_px)} per object`);
     return `<tr title="${esc(tip)}">` +
       `<td class="key">${c.name === null ? "" : esc(keyFor(c.id))}</td>` +
       `<td><span class="name"><span class="swatch" style="background:${colorFor(c.id)}"></span>${name}</span></td>` +
       `<td class="num">${c.images}</td>` +
+      `<td class="num">${c.avg_px === null ? "–" : c.avg_px.toLocaleString()}</td>` +
       `<td class="inst-cell"><div class="inst-row"><span class="inst-track">` +
       `<span class="inst-bar${c.instances ? "" : " zero"}" style="width:${(100 * c.instances) / max}%"></span>` +
       `</span><span class="num">${c.instances}</span></div></td></tr>`;
@@ -638,11 +640,19 @@ function statsHtml(s) {
 
   return `<h3>images <span>${im.total} total</span></h3>` +
     `<div class="tiles">${tiles}</div><div class="split">${split}</div>` +
-    `<h3>instances per class <span>${s.boxes} boxes total</span></h3>` +
+    `<h3>instances per class <span>${s.boxes} boxes total` +
+    `${s.avg_px === null ? "" : ` · ${pxArea(s.avg_px)} per object on average`}</span></h3>` +
     (s.classes.length
       ? `<table class="class-stats"><thead><tr><th>key</th><th>class</th>` +
-        `<th class="num">images</th><th>instances</th></tr></thead><tbody>${rows}</tbody></table>`
+        `<th class="num">images</th><th class="num" title="average box area in pixels">avg px</th>` +
+        `<th>instances</th></tr></thead><tbody>${rows}</tbody></table>`
       : `<p class="note">no classes yet</p>`);
+}
+
+// a pixel area with the side of the square of the same area, e.g. "1,600 px (≈ 40×40)"
+function pxArea(n) {
+  const side = Math.round(Math.sqrt(n));
+  return `${n.toLocaleString()} px (≈ ${side}×${side})`;
 }
 
 $("stats-btn").onclick = openStats;
