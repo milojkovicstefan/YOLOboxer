@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YOLOtiler</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/tiler.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="brand">YOLO<b>tiler</b></div>
+  <form id="dir-form" class="dir">
+    <label for="dir-input">dir</label>
+    <input id="dir-input" spellcheck="false" autocomplete="off" placeholder="/path/to/images">
+    <button type="submit">open</button>
+    <button type="button" id="browse-btn">browse&hellip;</button>
+  </form>
+  <div id="progress" class="progress"></div>
+  <button id="export-btn" type="button" class="primary">export tiles&hellip;</button>
+</header>
+
+<main class="layout">
+  <!-- left: image list -->
+  <aside class="panel files">
+    <h2><span>01</span> images</h2>
+    <ol id="file-list"></ol>
+  </aside>
+
+  <!-- centre: canvas -->
+  <section class="stage">
+    <div class="stage-head">
+      <button id="prev-btn" title="previous image (&larr;)">&larr;</button>
+      <span id="counter" class="counter">&mdash;</span>
+      <button id="next-btn" title="next image (&rarr;)">&rarr;</button>
+      <span id="image-name" class="image-name"></span>
+      <span class="spacer"></span>
+      <button id="prev-tile-btn" title="previous tile ([)">[</button>
+      <span id="tile-counter" class="counter">&mdash;</span>
+      <button id="next-tile-btn" title="next tile (])">]</button>
+      <span class="seg-btns">
+        <button id="mode-image" title="whole image with the tile grid (Esc)">image</button><button id="mode-tile" title="selected tile with its clipped boxes (Space)">tile</button>
+      </span>
+      <button id="zoom-btn" class="zoom" title="reset zoom (F)" disabled>fit</button>
+    </div>
+    <div id="canvas-wrap" class="canvas-wrap">
+      <canvas id="cv"></canvas>
+      <div id="empty" class="empty">
+        <p>No image directory open.</p>
+        <p>Type a path above or <button id="empty-browse-btn">browse&hellip;</button></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- right: settings + tiles + boxes -->
+  <aside class="panel side">
+    <h2><span>02</span> tiling</h2>
+    <form id="settings" class="settings" autocomplete="off">
+      <label for="set-w">size</label>
+      <span class="pair"><input id="set-w" type="number" min="1" step="1"> &times; <input id="set-h" type="number" min="1" step="1"></span>
+      <span class="unit">px</span>
+
+      <label for="set-ox">overlap</label>
+      <span class="pair"><input id="set-ox" type="number" min="0" step="1"> &times; <input id="set-oy" type="number" min="0" step="1"></span>
+      <span class="unit">px</span>
+      <span></span><span id="overlap-pct" class="hint"></span><span></span>
+
+      <label for="set-vis" title="a box cut by the tile edge is kept if at least this much of it is inside the tile">keep box</label>
+      <span class="pair">&ge; <input id="set-vis" type="number" min="0" max="100" step="1"> visible</span>
+      <span class="unit">%</span>
+    </form>
+    <div class="presets">
+      <span>size</span>
+      <button data-size="320">320</button><button data-size="416">416</button><button data-size="512">512</button><button data-size="640">640</button><button data-size="1024">1024</button>
+    </div>
+    <p id="settings-error" class="note error" hidden></p>
+    <p id="tile-summary" class="note"></p>
+
+    <h2><span>03</span> tiles</h2>
+    <ol id="tile-list"></ol>
+
+    <h2><span>04</span> boxes in tile</h2>
+    <ol id="box-list"></ol>
+  </aside>
+</main>
+
+<footer class="keys">
+  <span><kbd>click</kbd> select tile</span>
+  <span><kbd>dbl-click</kbd> / <kbd>Space</kbd> tile view</span>
+  <span><kbd>Esc</kbd> image view</span>
+  <span><kbd>[</kbd><kbd>]</kbd> prev / next tile</span>
+  <span><kbd>Shift</kbd>+<kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&rarr;</kbd><kbd>&darr;</kbd> neighbouring tile</span>
+  <span><kbd>pinch</kbd> / <kbd>Ctrl</kbd>+<kbd>scroll</kbd> zoom</span>
+  <span><kbd>scroll</kbd> / <kbd>drag</kbd> pan</span>
+  <span><kbd>F</kbd> fit</span>
+  <span><kbd>&larr;</kbd><kbd>&rarr;</kbd> prev / next image</span>
+</footer>
+
+<!-- directory browser -->
+<dialog id="browser" class="modal">
+  <div class="modal-head">
+    <h2>open directory</h2>
+    <button id="browser-close" title="close">&times;</button>
+  </div>
+  <div id="browser-path" class="browser-path"></div>
+  <ul id="browser-list" class="browser-list"></ul>
+  <div class="modal-foot">
+    <span id="browser-count"></span>
+    <button id="browser-open" class="primary">open this directory</button>
+  </div>
+</dialog>
+
+<!-- export -->
+<dialog id="export" class="modal export">
+  <div class="modal-head">
+    <h2>export tiles</h2>
+    <button id="export-close" title="close">&times;</button>
+  </div>
+  <form id="export-form" class="export-body">
+    <label class="out">
+      <span>output dir</span>
+      <input id="export-out" spellcheck="false" autocomplete="off">
+    </label>
+    <p class="note">relative paths are inside the image directory &middot; the result opens in YOLOboxer</p>
+    <label class="check"><input id="export-labelled" type="checkbox" checked> only images with a label file</label>
+    <label class="check"><input id="export-skip-empty" type="checkbox"> skip tiles without boxes</label>
+    <p id="export-summary" class="export-summary"></p>
+    <div id="export-bar" class="export-bar" hidden><span></span></div>
+    <p id="export-status" class="note"></p>
+  </form>
+  <div class="modal-foot">
+    <span></span>
+    <button id="export-run" class="primary">export</button>
+  </div>
+</dialog>
+
+<script src="/static/tiler.js"></script>
+</body>
+</html>

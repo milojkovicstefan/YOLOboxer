@@ -1,0 +1,73 @@
+/* YOLOtiler - additions on top of style.css (shared with YOLOboxer). */
+
+#cv { cursor: default; }
+#cv.grab { cursor: grabbing; }
+
+/* image list: marker, name, tile count */
+#file-list li .count { margin-left: auto; flex: none; font-size: 11px; }
+#file-list li.active .count { color: var(--paper); opacity: .6; }
+
+/* image | tile switch */
+.seg-btns { display: inline-flex; }
+.seg-btns button + button { border-left: 0; }
+.seg-btns button.on { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+
+/* tiling settings */
+.settings {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 6px 10px;
+  padding: 10px 12px 0;
+}
+.settings label { color: var(--ink-2); }
+.settings .pair { display: flex; align-items: baseline; gap: 6px; color: var(--ink-3); }
+.settings input { width: 6ch; flex: 1; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.settings input.bad { border-bottom-color: #e0431c; color: #e0431c; }
+.settings .unit { color: var(--ink-3); }
+.settings .hint { color: var(--ink-3); font-size: 11px; margin-top: -4px; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+.presets { display: flex; align-items: center; gap: 4px; padding: 10px 12px 0; flex-wrap: wrap; }
+.presets span { color: var(--ink-3); margin-right: 4px; font-size: 11px; }
+.presets button { padding: 0 6px; font-size: 11px; }
+.presets button.on { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.note.error { color: #e0431c; }
+#tile-summary { margin-bottom: 10px; }
+
+/* tile list */
+#tile-list { max-height: 34vh; overflow-y: auto; }
+#tile-list li, #box-list li {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px;
+  border-bottom: 1px solid var(--hair);
+}
+#tile-list li { grid-template-columns: 28px 1fr auto; cursor: pointer; }
+#tile-list li:hover { background: var(--paper-2); }
+#tile-list li.active { box-shadow: inset 3px 0 0 var(--accent-ink); background: var(--paper-2); }
+#tile-list .pos { font-variant-numeric: tabular-nums; }
+#tile-list .count { font-size: 11px; }
+#tile-list .count b { color: var(--ink); font-weight: 400; }
+
+/* boxes in the selected tile */
+#box-list li { grid-template-columns: 10px 1fr auto auto; cursor: default; }
+#box-list li:hover { background: transparent; }
+#box-list li.dropped { color: var(--ink-3); }
+#box-list li.dropped .swatch { opacity: .35; }
+#box-list .vis { color: var(--ink-3); font-size: 11px; min-width: 4ch; text-align: right; }
+
+/* export dialog */
+.export-body { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.export-body .out { display: flex; align-items: baseline; gap: 10px; }
+.export-body .out span { color: var(--ink-3); white-space: nowrap; }
+.export-body .out input { flex: 1; }
+.export-body .note { margin: 0 0 6px; }
+.export-body .check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.export-body .check input { accent-color: var(--accent); margin: 0; }
+.export-summary { margin: 8px 0 0; color: var(--ink-2); }
+.export-bar { height: 10px; border: 1px solid var(--hair); }
+.export-bar span { display: block; height: 100%; width: 0; background: var(--accent); }

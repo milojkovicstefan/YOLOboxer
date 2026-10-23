@@ -8,3 +8,14 @@ services:
       - ${IMAGES_DIR:-./images}:/data
     # write label files as your user instead of root
     user: "${UID:-1000}:${GID:-1000}"
+
+  yolotiler:
+    image: yoloboxer
+    pull_policy: never        # uses the image built by the yoloboxer service
+    depends_on: [yoloboxer]
+    command: ["python", "yolotiler.py", "/data", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "127.0.0.1:${TILER_PORT:-8001}:8001"
+    volumes:
+      - ${IMAGES_DIR:-./images}:/data
+    user: "${UID:-1000}:${GID:-1000}"
