@@ -25,6 +25,7 @@
 .settings input { width: 6ch; flex: 1; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
 .settings input.bad { border-bottom-color: #e0431c; color: #e0431c; }
 .settings .unit { color: var(--ink-3); }
+.settings .unit-btn { padding: 0 4px; min-width: 3.5ch; font-size: 12px; }
 .settings .hint { color: var(--ink-3); font-size: 11px; margin-top: -4px; }
 input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 input[type="number"]::-webkit-inner-spin-button,

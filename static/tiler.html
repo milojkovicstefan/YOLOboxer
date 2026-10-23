@@ -63,8 +63,8 @@
 
       <label for="set-ox">overlap</label>
       <span class="pair"><input id="set-ox" type="number" min="0" step="1"> &times; <input id="set-oy" type="number" min="0" step="1"></span>
-      <span class="unit">px</span>
-      <span></span><span id="overlap-pct" class="hint"></span><span></span>
+      <button type="button" id="overlap-unit" class="unit-btn" title="type the overlap in pixels or in % of the tile size">px</button>
+      <span></span><span id="overlap-other" class="hint"></span><span></span>
 
       <label for="set-vis" title="a box cut by the tile edge is kept if at least this much of it is inside the tile">keep box</label>
       <span class="pair">&ge; <input id="set-vis" type="number" min="0" max="100" step="1"> visible</span>

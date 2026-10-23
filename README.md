@@ -93,7 +93,9 @@ the tiles with their labels clipped to each tile.
 
 Open http://127.0.0.1:8001 and pick the same image directory you labelled in YOLOboxer.
 
-- **size** and **overlap** (px, separately for x and y) set the grid. Overlap regions are
+- **size** and **overlap** (separately for x and y) set the grid. The *px* / *%* button next
+  to the overlap switches between pixels and a share of the tile size; in % the overlap
+  follows the tile size when you change it. Overlap regions are
   shaded on the image; the last tile in a row or column is moved back to end at the image
   edge, so it overlaps its neighbour more than asked (the panel tells you how much). An
   image smaller than the tile becomes a single tile of its own size.

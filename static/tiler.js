@@ -14,7 +14,9 @@ const COLORS = ["#f5c818", "#e0431c", "#2f9e57", "#c99a06", "#8a3fc7", "#0f9fa8"
                 "#d6336c", "#6b8e23", "#b8551f", "#4054b2", "#7a5c3e", "#c2185b"];
 const LAST_DIR_KEY = "yolotiler.lastDir";
 const SETTINGS_KEY = "yolotiler.settings";
-const DEFAULTS = { w: 640, h: 640, ox: 64, oy: 64, minVis: 25 };
+// ox, oy: overlap in px, which the grid uses; pox, poy: the same as % of the tile size.
+// unit says which of the two the user types; the other one follows from it.
+const DEFAULTS = { w: 640, h: 640, ox: 64, oy: 64, pox: 10, poy: 10, unit: "px", minVis: 25 };
 const MAX_TILES = 10000;  // per image; more is almost certainly a typo in the overlap
 const CLICK_PX = 4;       // a press that moves less than this on screen is a click, not a pan
 const MAX_ZOOM = 32;      // relative to the fitted size
@@ -223,17 +225,37 @@ const FIELDS = { w: "set-w", h: "set-h", ox: "set-ox", oy: "set-oy", minVis: "se
 
 function loadSettings() {
   try {
-    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-    if (s && Object.keys(DEFAULTS).every((k) => Number.isFinite(s[k]))) return { ...DEFAULTS, ...s };
+    const s = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY)) };
+    const numbers = Object.keys(DEFAULTS).filter((k) => k !== "unit");
+    if (numbers.every((k) => Number.isFinite(s[k])) && ["px", "%"].includes(s.unit)) {
+      if (s.unit === "px") [s.pox, s.poy] = [(100 * s.ox) / s.w, (100 * s.oy) / s.h];
+      return s;
+    }
   } catch {}
   return { ...DEFAULTS };
 }
 
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); } catch {}
+}
+
+const pct = (p) => +p.toFixed(1);   // a percentage as shown: at most one decimal
+
 function showSettings() {
+  const s = state.settings, inPct = s.unit === "%";
   for (const [k, id] of Object.entries(FIELDS)) {
-    $(id).value = state.settings[k];
+    $(id).value = s[k];
     $(id).classList.remove("bad");
   }
+  if (inPct) {
+    $("set-ox").value = pct(s.pox);
+    $("set-oy").value = pct(s.poy);
+  }
+  for (const id of ["set-ox", "set-oy"]) {
+    $(id).step = inPct ? "any" : "1";
+    $(id).max = inPct ? "99.9" : "";
+  }
+  $("overlap-unit").textContent = s.unit;
   $("settings-error").hidden = true;
 }
 
@@ -241,15 +263,28 @@ function showSettings() {
 function readSettings() {
   const v = {}, bad = new Set();
   for (const [k, id] of Object.entries(FIELDS)) v[k] = Number($(id).value);
+  v.unit = state.settings.unit;
   const int = (n, min) => Number.isInteger(n) && n >= min;
   if (!int(v.w, 1)) bad.add("w");
   if (!int(v.h, 1)) bad.add("h");
+  if (v.unit === "%") {   // the inputs hold % of the tile size; the grid needs whole px
+    [v.pox, v.poy] = [v.ox, v.oy];
+    if (!(v.pox >= 0 && v.pox < 100)) bad.add("ox");
+    if (!(v.poy >= 0 && v.poy < 100)) bad.add("oy");
+    v.ox = Math.round((v.pox / 100) * v.w);
+    v.oy = Math.round((v.poy / 100) * v.h);
+  } else {
+    v.pox = (100 * v.ox) / v.w;
+    v.poy = (100 * v.oy) / v.h;
+  }
   if (!int(v.ox, 0) || v.ox >= v.w) bad.add("ox");
   if (!int(v.oy, 0) || v.oy >= v.h) bad.add("oy");
   if ($("set-vis").value === "" || !(v.minVis >= 0 && v.minVis <= 100)) bad.add("minVis");
 
   let error = "";
-  if (bad.has("ox") || bad.has("oy")) error = "overlap must be smaller than the tile size";
+  if (bad.has("ox") || bad.has("oy")) {
+    error = v.unit === "%" ? "overlap must be below 100%" : "overlap must be smaller than the tile size";
+  }
   if (!bad.size) {
     const most = Math.max(0, ...state.images.map((im) => tileCount(im.w, im.h, v)),
                           tileCount(img.naturalWidth, img.naturalHeight, v));
@@ -264,7 +299,7 @@ function readSettings() {
   if (bad.size) return;
 
   state.settings = v;
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(v)); } catch {}
+  saveSettings();
   regrid();
   if (state.mode === "tile") layout();
   renderFiles();
@@ -275,15 +310,34 @@ $("settings").addEventListener("input", readSettings);
 $("settings").addEventListener("submit", (e) => e.preventDefault());
 
 // a preset sets a square tile size and keeps the overlap at the same share of the tile
+// (in % mode the overlap inputs already say that)
 document.querySelector(".presets").addEventListener("click", (e) => {
   const size = +e.target.dataset.size;
   if (!size) return;
   const s = state.settings;
   $("set-w").value = $("set-h").value = size;
-  $("set-ox").value = Math.round((s.ox / s.w) * size);
-  $("set-oy").value = Math.round((s.oy / s.h) * size);
+  if (s.unit === "px") {
+    $("set-ox").value = Math.round((s.ox / s.w) * size);
+    $("set-oy").value = Math.round((s.oy / s.h) * size);
+  }
   readSettings();
 });
+
+// switch the overlap inputs between px and % of the tile size; the grid stays as it is
+$("overlap-unit").onclick = () => {
+  const s = state.settings;
+  s.unit = s.unit === "px" ? "%" : "px";
+  saveSettings();
+  showSettings();
+  renderHead();
+};
+
+// the overlap as the user set it, with the other unit in brackets
+function overlapText(s) {
+  return s.unit === "%"
+    ? `${pct(s.pox)}% × ${pct(s.poy)}% (${s.ox} × ${s.oy} px)`
+    : `${s.ox} × ${s.oy} px (${pct(s.pox)}% × ${pct(s.poy)}%)`;
+}
 
 // --- canvas ----------------------------------------------------------------
 
@@ -635,7 +689,8 @@ function renderHead() {
   $("mode-image").classList.toggle("on", state.mode === "image");
   $("mode-tile").classList.toggle("on", state.mode === "tile");
   const s = state.settings;
-  $("overlap-pct").textContent = `${Math.round((100 * s.ox) / s.w)}% × ${Math.round((100 * s.oy) / s.h)}%`;
+  $("overlap-other").textContent = s.unit === "%"
+    ? `= ${s.ox} × ${s.oy} px` : `= ${pct(s.pox)}% × ${pct(s.poy)}%`;
   for (const b of document.querySelectorAll(".presets button")) {
     b.classList.toggle("on", s.w === s.h && s.w === +b.dataset.size);
   }
@@ -763,7 +818,8 @@ const exportImages = () => state.images.filter((im) => im.done || !$("export-lab
 
 function settingsPayload() {
   const s = state.settings;
-  return { w: s.w, h: s.h, ox: s.ox, oy: s.oy, min_vis: s.minVis };
+  return { w: s.w, h: s.h, ox: s.ox, oy: s.oy, min_vis: s.minVis,
+           overlap_pct: s.unit === "%" ? [s.pox, s.poy] : null };
 }
 
 function showExportSummary() {
@@ -771,7 +827,7 @@ function showExportSummary() {
   const tiles = ims.reduce((n, im) => n + tileCount(im.w, im.h, s), 0);
   $("export-summary").textContent =
     `${ims.length} image${ims.length === 1 ? "" : "s"} → ${tiles.toLocaleString()} tiles` +
-    `${$("export-skip-empty").checked ? " at most" : ""} · ${s.w}×${s.h}, overlap ${s.ox}×${s.oy}` +
+    `${$("export-skip-empty").checked ? " at most" : ""} · ${s.w}×${s.h}, overlap ${overlapText(s)}` +
     ` · boxes kept if ≥ ${s.minVis}% visible`;
 }
 

@@ -52,6 +52,9 @@ class TileSettings(BaseModel):
     ox: int = Field(ge=0)              # horizontal overlap between neighbouring tiles, px
     oy: int = Field(ge=0)              # vertical overlap, px
     min_vis: float = Field(ge=0, le=100)   # keep a cut box if at least this % of it is in the tile
+    # the overlap as the user typed it, in % of the tile size (x, y), if they did; only
+    # recorded in tiling.json, the tiles are cut by ox and oy
+    overlap_pct: tuple[float, float] | None = None
 
 
 def tile_starts(length: int, size: int, overlap: int) -> list[int]:
