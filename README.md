@@ -57,6 +57,10 @@ IMAGE_DIR/
     img001.txt      one box per line: class cx cy w h (normalised 0-1)
 ```
 
+Drag a class up or down in the classes panel to change its id. The new order is written to
+`classes.txt`, and the class ids in every label file are rewritten to match, so each box keeps
+its class.
+
 An image saved with no boxes gets an empty label file and counts as labelled (a background
 image); it is marked blue instead of green in the image list.
 

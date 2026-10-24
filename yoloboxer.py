@@ -97,6 +97,30 @@ class Workspace:
         self.labels_dir.mkdir(exist_ok=True)
         self.classes_file.write_text("\n".join(classes) + ("\n" if classes else ""))
 
+    def remap_labels(self, mapping: dict[int, int]) -> int:
+        """Rewrite the class id of every box in every label file through `mapping`
+        (old id -> new id; ids not in it are kept). Returns the number of files changed."""
+        if not self.labels_dir.is_dir():
+            return 0
+        changed = 0
+        for lp in sorted(self.labels_dir.glob("*.txt")):
+            if lp == self.classes_file:
+                continue
+            text = lp.read_text()
+            lines = []
+            for line in text.splitlines():
+                parts = line.split(maxsplit=1)
+                if len(parts) == 2 and parts[0].isdigit() and int(parts[0]) in mapping:
+                    line = f"{mapping[int(parts[0])]} {parts[1]}"
+                lines.append(line)
+            new = "\n".join(lines) + ("\n" if lines else "")
+            if new != text:
+                tmp = lp.with_name(lp.name + ".tmp")
+                tmp.write_text(new)
+                os.replace(tmp, lp)   # never leave a half-written label file behind
+                changed += 1
+        return changed
+
 
 ws = Workspace()
 
@@ -140,6 +164,10 @@ class OpenPayload(BaseModel):
 
 class ClassesPayload(BaseModel):
     classes: list[str]
+
+
+class ReorderPayload(BaseModel):
+    order: list[int]   # order[new id] = old id; a permutation of the current class ids
 
 
 # --- routes -----------------------------------------------------------------
@@ -262,6 +290,19 @@ def api_save_classes(payload: ClassesPayload):
     classes = [c.strip() for c in payload.classes if c.strip()]
     ws.write_classes(classes)
     return {"classes": classes}
+
+
+@app.post("/api/classes/reorder")
+def api_reorder_classes(payload: ReorderPayload):
+    """Reorder the classes and renumber the boxes in all label files to match."""
+    ws.require()
+    classes = ws.read_classes()
+    if sorted(payload.order) != list(range(len(classes))):
+        raise HTTPException(400, "order must be a permutation of the class ids")
+    mapping = {old: new for new, old in enumerate(payload.order) if old != new}
+    files = ws.remap_labels(mapping)
+    ws.write_classes([classes[old] for old in payload.order])
+    return {"classes": ws.read_classes(), "files": files}
 
 
 # --- entry point ------------------------------------------------------------

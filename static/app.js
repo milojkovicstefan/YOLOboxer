@@ -146,6 +146,31 @@ async function saveClasses(classes) {
   draw();
 }
 
+// move class `from` to position `to`, renumbering the boxes in every label file
+async function moveClass(from, to) {
+  if (from === to) return;
+  const order = state.classes.map((_, c) => c);
+  order.splice(to, 0, ...order.splice(from, 1));
+  const msg = `Move class "${state.classes[from]}" from id ${from} to id ${to}?\n` +
+              "The class ids in all saved label files are rewritten to match.";
+  if (!confirm(msg)) return;
+  let r;
+  try {
+    r = await api("/api/classes/reorder", { order });
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
+  // renumber the boxes on screen too, so unsaved boxes stay with their class
+  const newId = new Map(order.map((old, i) => [old, i]));
+  for (const b of state.boxes) b.cls = newId.get(b.cls) ?? b.cls;
+  state.cur = newId.get(state.cur) ?? state.cur;
+  state.classes = r.classes;
+  renderClasses();
+  renderBoxes();
+  draw();
+}
+
 // --- box editing -----------------------------------------------------------
 
 function addBox(b) {
@@ -440,7 +465,7 @@ function renderClasses() {
   const counts = state.classes.map((_, c) => state.boxes.filter((b) => b.cls === c).length);
   const last = state.classes.length - 1;
   $("class-list").innerHTML = state.classes.length ? state.classes.map((name, c) =>
-    `<li data-c="${c}" class="${c === state.cur ? "active" : ""}">` +
+    `<li data-c="${c}" class="${c === state.cur ? "active" : ""}" draggable="true">` +
     `<span class="key">${esc(keyFor(c))}</span>` +
     `<span class="swatch" style="background:${colorFor(c)}"></span>` +
     `<span class="cname">${esc(name)}</span>` +
@@ -487,6 +512,7 @@ $("class-list").addEventListener("dblclick", (e) => {
   if (!li) return;
   const c = +li.dataset.c;
   const cell = li.querySelector(".cname");
+  li.draggable = false;   // so the mouse selects text in the input instead of dragging
   const input = document.createElement("input");
   input.value = state.classes[c];
   cell.replaceChildren(input);
@@ -510,6 +536,45 @@ $("class-list").addEventListener("dblclick", (e) => {
     if (ev.key === "Escape") finish(false);
   });
   input.addEventListener("blur", () => finish(true));
+});
+
+// drag a class up or down to change its id
+let dragClass = null;   // {from, to} while dragging; `to` is the insert position
+
+$("class-list").addEventListener("dragstart", (e) => {
+  const li = e.target.closest("li[data-c]");
+  if (!li) return;
+  dragClass = { from: +li.dataset.c, to: +li.dataset.c };
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", li.dataset.c);
+  li.classList.add("dragging");
+});
+
+$("class-list").addEventListener("dragover", (e) => {
+  const li = e.target.closest("li[data-c]");
+  if (!dragClass || !li) return;
+  e.preventDefault();
+  const r = li.getBoundingClientRect();
+  const after = e.clientY > r.top + r.height / 2;
+  const slot = +li.dataset.c + (after ? 1 : 0);              // gap index 0..n
+  dragClass.to = slot > dragClass.from ? slot - 1 : slot;   // index once removed and reinserted
+  for (const el of $("class-list").children) el.classList.remove("drop-before", "drop-after");
+  if (dragClass.to !== dragClass.from) li.classList.add(after ? "drop-after" : "drop-before");
+});
+
+$("class-list").addEventListener("drop", (e) => {
+  if (!dragClass) return;
+  e.preventDefault();
+  const { from, to } = dragClass;
+  dragClass = null;
+  renderClasses();
+  moveClass(from, to);
+});
+
+$("class-list").addEventListener("dragend", () => {
+  if (!dragClass) return;   // cancelled: dropped outside the list
+  dragClass = null;
+  renderClasses();
 });
 
 $("add-class-form").addEventListener("submit", async (e) => {
