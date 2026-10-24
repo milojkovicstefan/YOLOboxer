@@ -7,7 +7,8 @@ Pick an image directory in the UI (or pass it on the command line), set the tile
 overlap, and check how the YOLOboxer labels end up in each tile. Export writes the tiles in
 the same layout YOLOboxer uses, so the output directory can be opened in YOLOboxer again:
 
-    <OUT>/<image stem>_x<left>_y<top><ext>    the tile, cut from the image at pixel (left, top)
+    <OUT>/<image stem>_x<left>_y<top><ext>    the tile, cut from the image at pixel (left, top),
+                                              with the image's EXIF GPS data
     <OUT>/labels/<tile stem>.txt              boxes clipped to the tile, normalised to the tile
     <OUT>/labels/classes.txt                  copied from the image directory
     <OUT>/tiling.json                         the settings used
@@ -42,6 +43,9 @@ async def no_cache(request, call_next):
 
 
 ws = Workspace()
+
+GPS_IFD = 0x8825                           # EXIF tag of the GPS info block
+EXIF_EXTS = {".jpg", ".jpeg", ".png", ".webp"}   # tile formats Pillow can write EXIF to
 
 
 # --- tiling -----------------------------------------------------------------
@@ -200,6 +204,13 @@ def api_export_image(payload: ExportImagePayload):
 
     written = with_boxes = 0
     with Image.open(src) as im:
+        gps = im.getexif().get_ifd(GPS_IFD)
+        if gps and ext.lower() in EXIF_EXTS:
+            # every tile gets the photo's GPS position; the rest of the EXIF (orientation,
+            # pixel size, thumbnail) would be wrong for a tile, so it is left out
+            exif = Image.Exif()
+            exif[GPS_IFD] = gps
+            save_opts["exif"] = exif
         im = ImageOps.exif_transpose(im)   # labels were drawn on the rotated image
         width, height = im.size
         for tile in tiles_for(width, height, s):

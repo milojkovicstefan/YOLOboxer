@@ -119,6 +119,10 @@ OUT/                          default IMAGE_DIR/tiles
   tiling.json                 the settings used
 ```
 
+Each tile keeps the GPS data (EXIF) of the photo it was cut from, so all tiles of a photo
+carry the same position; the rest of the EXIF is not copied. GPS is kept for JPEG, PNG and
+WebP; BMP and GIF tiles have none.
+
 By default only images with a label file are exported; an image without one gives tiles
 without label files. *skip tiles without boxes* leaves out background tiles.
 
